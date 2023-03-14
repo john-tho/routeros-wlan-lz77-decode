@@ -12,6 +12,54 @@ wlan-data is packed with a LZ77 header.
 
 [openwrt rb_hard]: https://github.com/openwrt/openwrt/blob/master/target/linux/generic/files/drivers/platform/mikrotik/rb_hardconfig.c#L483
 
+## LZ77 decompress description
+
+See [decode_lz77.py](decode_lz77.py) for example and clarification
+
+- decompressor walks through input bits from lowest bit to highest
+- For each group (match or non-matching data), there is:
+  - `opcode`, encoded `length`
+- When calculating lengths:
+  - an initial `bitshift` is used for the first length bit
+  - if this bit is set, then add `bit<<bitshift` to the count, and
+    increment `bitshift`
+  - walk to the next bit
+  - this is repeated until a zero bit is found, then the `bitshift` value
+    gets decremented for each following `bit`,
+    and the `bit<<bitshift` result added to the count
+  Example: `0b1010010` with initial bitshift of 4:
+
+  |bitshift |4   |5  |4  |3  |2  |1  |0  |
+  |---------|----|---|---|---|---|---|---|
+  |bit value|1   |0  |1  |0  |0  |1  |0  |
+
+  `= (1<<4) + (0<<5 | 1<<4 | 0<<3 | 0<<2 | 1<<1 | 0<<1) == 16 + 18 == 34`
+  Example 2: `0b1100 0010 0` with initial bitshift of 4 = 52
+  Example 3: `0b0001 0` with initial bitshift of 4 = 2
+  Example 4: `0b101` with initial bitshift of 0 = 2
+  Example 5: `0b0` with initial bitshift of 0 = 0
+- If opcode is `0b0`, this is a non-matching group of a single byte
+  the byte immediately follows this opcode bit
+- If opcode is `0b10`, this is a match group, using the previous match offset,
+  match length is calculated with the counter bitshift starting at 0,
+  less the built-in match length of 1
+- If opcode is `0b11`, this is a two-counter group.
+  - The first count starts at bitshift 4
+    - If this count is zero, this is a non-matching group.
+      A additional counter starts at bitshift 4 to calculate the
+      number of bytes in this group,
+      less built in 11,
+      less zeroth byte (1)
+      - If the byte len count is zero, and there is a `0b0` bit following,
+        have reached the end of the compressed payload
+   - If this count is >0, this is a matching group
+     The first count is the match offset.
+     - The second count starts at bitshift 0, and is the match length,
+       less the built in match length of 2
+
+
+## Process:
+
 [Download a firmware package (7.8-arm)][7.8-arm.npk], that we know uses LZ77,
 then extract it with `binwalk -Me routeros-7.8-arm.npk`
 Search for the magic text (swapped to check other endian):
