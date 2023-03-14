@@ -14,8 +14,10 @@ wlan-data is packed with a LZ77 header.
 
 [Download a firmware package (7.8-arm)][7.8-arm.npk], that we know uses LZ77,
 then extract it with `binwalk -Me routeros-7.8-arm.npk`
-[7.8-arm.npk]: https://download.mikrotik.com/routeros/7.8/routeros-7.8-arm.npk
 Search for the magic text (swapped to check other endian):
+
+[7.8-arm.npk]: https://download.mikrotik.com/routeros/7.8/routeros-7.8-arm.npk
+
 ```
 john@john _routeros-7.8-arm.npk.extracted]$ grep -r --binary-files=text --files-with-match '77ZL' .
 ./squashfs-root/lib/modules/5.6.3/misc/flash.ko
