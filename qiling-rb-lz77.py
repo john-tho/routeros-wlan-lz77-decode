@@ -12,15 +12,20 @@ from collections import Counter
 rootfs = Path("/tmp/venv-qiling/_routeros-7.8-arm.npk.extracted/squashfs-root")
 file = rootfs / "lib/modules/5.6.3/misc/flash.ko"
 file = Path("/tmp/venv-qiling/arm-test")
+compressed_file = Path("/home/john/mikrotik/OEM/chateau12/dchard-mtd2-hard-config-chateau12-2")
+
+fp = open(compressed_file, "rb")
+hard_tags_data = fp.read()
+fp.close()
 
 #lz77_decomp_function_start_address=0x34
 #lz77_decomp_function_end_address=0x34+0x1b0
 
 
-from unicorn.unicorn_const import UC_MEM_WRITE
+from unicorn.unicorn_const import UC_MEM_WRITE,UC_PROT_READ
 
 from capstone import Cs
-from capstone.arm_const import ARM_INS_LDRB,ARM_INS_STRB,ARM_INS_POP
+from capstone.arm_const import ARM_INS_LDRB,ARM_INS_STRB,ARM_INS_POP,ARM_INS_PUSH
 
 from qiling.arch.arm_const import reg_map
 
@@ -68,6 +73,25 @@ block_addresses[0x11270] = 'outbuf'
 block_addresses[0x51270] = 'outbuf_len'
 block_addresses[0x51280] = 'inbuf'
 block_addresses[0x51d40] = 'inbuf_len'
+
+
+def get_hardtag(hard_config: bytes, tag_id: int) -> bytes:
+    i = 0
+    if not hard_config[i:i+4] == b'Hard':
+        return b''
+
+    while True:
+        i += 4
+        if i + 4 > len(hard_config):
+            return b''
+        current_len_tag = struct.unpack("<I", hard_config[i:i+4])[0]
+        current_tag_len = current_len_tag >> 0x10
+        current_tag_id = current_len_tag & 0xff
+
+        if current_tag_id == tag_id:
+            return hard_config[i+4:i+4+current_tag_len]
+
+        i += current_tag_len
 
 def name_block(address):
     # not working...
@@ -149,12 +173,32 @@ def dump_uncompressed(ql: Qiling):
     uncompressed_payload = ql.mem.read(uncompressed_start, uncompressed_len)
     return uncompressed_payload
 
+def hook_decompress_entry(ql: Qiling):
+    wlan_tag = get_hardtag(hard_tags_data, 0x16)
+    wlan_data_ptr = ql.mem.map_anywhere((len(wlan_tag)+4//0x1000*0x1000), minaddr=ql.os.entry_point, perms=UC_PROT_READ, info="compressed_wlan_data")
+    ql.mem.write(wlan_data_ptr, wlan_tag)
+
+    for info_line in ql.mem.get_formatted_mapinfo():
+      ql.log.info(info_line)
+
+
+    ql.log.debug(f'current regs: r2 {ql.arch.regs.r2:#x} (inbuf_ptr) r3 {ql.arch.regs.r3:#x} (inbuf_len)')
+    ql.arch.regs.r2 = wlan_data_ptr + 4
+    ql.arch.regs.r3 = len(wlan_tag) - 4
+
+
 def hook_pop(ql: Qiling):
     ql.log.debug(f'hooked pop')
     uncompressed_data = dump_uncompressed(ql)
 
 def simple_diassembler(ql: Qiling, address: int, size: int, md: Cs) -> None:
     buf = ql.mem.read(address, size)
+
+    for insn in md.disasm(buf, address):
+        if insn.id in [ARM_INS_PUSH]:
+            hook_decompress_entry(ql)
+
+    return
 
     input_bit_start = None
     input_bit_end = None
@@ -277,6 +321,7 @@ if __name__ == "__main__":
     # does not work
     #ql.hook_insn(hook_pop, ARM_INS_POP)
 
+
     #ql.run(begin=lz77_decomp_function_start_address, end=lz77_decomp_function_end_address)
     try:
         ql.run()
@@ -302,3 +347,8 @@ if __name__ == "__main__":
 
     ql.log.info(f'qiling mem dumped uncompressed payload len {len(uncompressed_data):#x}')
     ql.log.info(f'{" ".join(hex(b) for b in uncompressed_data[0:32])}')
+
+    fn = "output-decompressed-qiling"
+    fp = open(fn, "wb")
+    fp.write(uncompressed_data)
+    fp.close()
