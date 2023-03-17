@@ -1,4 +1,5 @@
 import bitstring
+import struct
 
 fn="dchard-hard-wlan-data-no-tag-no-lz77-magic"
 fp=open(fn, "rb")
@@ -17,6 +18,43 @@ b0 = bitstring.BitStream(data)
 # because lz77 decompress reads from lowest bit to highest
 b.byteswap()
 b.reverse()
+
+fn="/home/john/mikrotik/OEM/chateau12/dchard-mtd2-hard-config-chateau12-2"
+fp=open(fn, "rb")
+data1=fp.read()
+fp.close()
+
+fn="/home/john/mikrotik/OEM/chateau12/dchard-mtd2-hard-config-chateau12-2-wlan-data-un-lz77"
+fp=open(fn, "rb")
+udata1=fp.read()
+fp.close()
+
+def get_hardtag(hard_config: bytes, tag_id: int) -> bytes:
+    i = 0
+    if not hard_config[i:i+4] == b'Hard':
+        return b''
+
+    while True:
+        i += 4
+        if i + 4 > len(hard_config):
+            return b''
+        current_len_tag = struct.unpack("<I", hard_config[i:i+4])[0]
+        current_tag_len = current_len_tag >> 0x10
+        current_tag_id = current_len_tag & 0xff
+        #print(f'hard_tag id:{current_tag_id:#x} len:{current_tag_len:#x}')
+
+        if current_tag_id == tag_id:
+            return hard_config[i+4:i+4+current_tag_len]
+
+        i += current_tag_len
+
+wlan_tag = get_hardtag(data1, 0x16)
+wlan_tag_nomagic = wlan_tag[4:]
+
+a1 = bitstring.BitStream(udata1)
+b1 = bitstring.BitStream(wlan_tag_nomagic)
+b1.byteswap()
+b1.reverse()
 
 def decode_count(bits, counter_start_index, starting_shift):
   count = 0
@@ -134,4 +172,30 @@ def decode_lz77(out, b):
 out = bitstring.BitStream()
 decode_lz77(out,b)
 
+#print(f'uncompress example 1: {len(data):#x}')
+#print(f'uncompress example 1: {b.len//4:#x}')
 print(f'uncompress matches emulated result?: {out == a}')
+
+out1 = bitstring.BitStream()
+decode_lz77(out1,b1)
+#print(f'uncompress example 2: {len(wlan_tag):#x}')
+#print(f'uncompress example 2: {len(wlan_tag[4:]):#x}')
+#print(f'uncompress example 2: {b1.len//4:#x}')
+print(f'uncompress example 2 is in emulated result?: {out1 in a1}')
+print(f'uncompress example 2 matches emulated result?: {out1 == a1}')
+print(f'uncompress example 1 matches emulated result?: {out == a}')
+
+print(f'compress example 1 == 2?: {b == b1}')
+print(f'uncompress example 1 == 2?: {out == out1}')
+
+
+l = 1
+while True:
+    equal = out[:l] == out1[:l]
+    print(f'uncompress example 1[:{l:#x}] == 2?: {equal}')
+    l += 8
+    if not equal:
+        break
+
+print(b[l:])
+print(b1[l:])
