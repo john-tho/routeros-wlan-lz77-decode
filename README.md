@@ -62,7 +62,8 @@ See [decode_lz77.py](decode_lz77.py) for example and clarification
         number of bytes in this group,
         - less built in 11,
         - less zeroth byte (1)
-        - If the byte len count is zero, and there is a `0` bit following,
+        - If the byte len count is zero, and there is a `0` bit
+          (or multiple `0`―padding) following,
           have reached the end of the compressed payload
    - If this count is >0, this is a matching group
      - The first count is the match offset.
