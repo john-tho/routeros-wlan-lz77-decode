@@ -28,11 +28,6 @@ if args.output is None:
     args.output = Path(str(args.input) + "-lz77-decoded")
     logging.info(f"output to: {args.output}")
 
-if args.output.is_file() and not args.force:
-    raise IOError(errno.EEXIST,
-                  os.strerror(errno.EEXIST),
-                  args.input)
-
 def get_hardtag(hard_config: bytes, tag_id: int) -> (int, int):
     i = 0
     if not hard_config[i:i+4] == b'Hard':
@@ -224,6 +219,12 @@ if expected_unpacked_start == unpacked_lz77_wlan_data[0:4*8]:
 else:
     logging.warning("unpacked[0:4]: unexpected: " +
                     f" decode error?: {unpacked_lz77_wlan_data[0:4*8]}")
+
+if args.output.is_file() and not args.force:
+    raise IOError(errno.EEXIST,
+                  os.strerror(errno.EEXIST),
+                  args.input)
+
 fn=args.output
 fp=open(fn, "wb")
 fp.write(unpacked_lz77_wlan_data.tobytes())
