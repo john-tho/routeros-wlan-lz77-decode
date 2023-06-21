@@ -217,6 +217,13 @@ unpacked_lz77_wlan_data = bitstring.BitStream()
 decode_lz77(unpacked_lz77_wlan_data,packed_lz77_wlan_data)
 logging.info("lz77 packed is" +
              f" {len(packed_lz77_wlan_data)/len(unpacked_lz77_wlan_data):.4f} unpacked")
+
+expected_unpacked_start = bitstring.BitArray(bytes=b"DRE\x00")
+if expected_unpacked_start == unpacked_lz77_wlan_data[0:4*8]:
+    logging.info(f"unpacked[0:4]: matches expected DRE\\x00")
+else:
+    logging.warning("unpacked[0:4]: unexpected: " +
+                    f" decode error?: {unpacked_lz77_wlan_data[0:4*8]}")
 fn=args.output
 fp=open(fn, "wb")
 fp.write(unpacked_lz77_wlan_data.tobytes())
