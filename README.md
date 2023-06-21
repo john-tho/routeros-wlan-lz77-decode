@@ -33,28 +33,28 @@ See [decode_lz77.py](decode_lz77.py) for example and clarification
   - this is repeated until a zero bit is found, then the `bitshift` value
     gets decremented for each following `bit`,
     and the `bit<<bitshift` result added to the count
-  - Example: `0b1010010` with initial bitshift of 4:
+  - Example: bits (reversed & byteswapped: smallest to largest) `1010010` == `0b100101` with initial bitshift of 4:
 
     |bitshift |4   |5  |4  |3  |2  |1  |0  |
     |---------|----|---|---|---|---|---|---|
     |bit value|1   |0  |1  |0  |0  |1  |0  |
 
     `= (1<<4) + (0<<5 | 1<<4 | 0<<3 | 0<<2 | 1<<1 | 0<<1) == 16 + 18 == 34`
-  - Example 2: `0b1100 0010 0` with initial bitshift of 4 = 52
-  - Example 3: `0b0001 0` with initial bitshift of 4 = 2
-  - Example 4: `0b101` with initial bitshift of 0 = 2
-  - Example 5: `0b0` with initial bitshift of 0 = 0
+  - Example 2: `1100 0010 0` with initial bitshift of 4 = 52
+  - Example 3: `0001 0` with initial bitshift of 4 = 2
+  - Example 4: `101` with initial bitshift of 0 = 2
+  - Example 5: `0` with initial bitshift of 0 = 0
 
 ### opcodes
 
-- If opcode is `0b0`
+- If opcode is `0`
   - this is a non-matching group of a single byte.
     The byte immediately follows this opcode bit.
-- If opcode is `0b10`
+- If opcode is `10`
   - this is a match group, using the previous match offset,
   - match length is calculated with the counter bitshift starting at 0,
     - less the built-in match length of 1
-- If opcode is `0b11`,
+- If opcode is `11`,
   - this is a two-counter group.
   - The first count starts at bitshift 4
     - If this count is zero, this is a non-matching group.
@@ -62,7 +62,7 @@ See [decode_lz77.py](decode_lz77.py) for example and clarification
         number of bytes in this group,
         - less built in 11,
         - less zeroth byte (1)
-        - If the byte len count is zero, and there is a `0b0` bit following,
+        - If the byte len count is zero, and there is a `0` bit following,
           have reached the end of the compressed payload
    - If this count is >0, this is a matching group
      - The first count is the match offset.
