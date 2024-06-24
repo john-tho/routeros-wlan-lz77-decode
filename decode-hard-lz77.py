@@ -145,7 +145,8 @@ def decode_lz77(out, b):
                      f", append len: {append_bits.len}" +
                      f", append bit: {append_bits}")
         # 0 bit as final
-        if '0b0'*append_bits.len == append_bits:
+        #if '0b0'*append_bits.len == append_bits:
+        if True:
           logging.debug(f"inbit{i-1:#x}->outbyte{(out.len-1)//8:#x} {op}")
           logging.info("lz77 decode finished" +
                        f", uncompressed length: {out.len//8:x}")

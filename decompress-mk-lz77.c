@@ -140,7 +140,8 @@ enum lz77_mikrotik_instruction {
 	 * 	the second counter (bytes length) starts at bitshift 4,
 	 * 	less the built-in count of 11+1.
 	 * 	The final match group has this count 0,
-	 * 	and (at least 1) 0 bits pad to byte-align
+	 * 	and following (usually null, one reported exception)
+	 * 	bits pad to byte-align
 	 *
 	 * 	if this counter > 0, this is a matching group
 	 * 	this first count is the match offset (in bytes)
@@ -366,8 +367,7 @@ int lz77_mikrotik_wlan_decompress(
 							opcode->length);
 					/* test end marker */
 					if (opcode->length == 0xc &&
-							((input_bit + opcode->length*8) > in_len)
-							&& (!lz77_mikrotik_wlan_get_bit(in, input_bit))){
+							((input_bit + opcode->length*8) > in_len)) {
 
 						if (!(*(unsigned int *)out == LZ77_MK_EXPECTED_OUT)) {
 							printf("lz77 decompressed from %d to %ld\n",
