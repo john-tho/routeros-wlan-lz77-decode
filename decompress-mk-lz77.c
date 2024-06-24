@@ -14,7 +14,7 @@
 #define LZ77_MK_MAX_DECODED 0x40000
 
 /* examples have all decompressed to start with DRE\x00 */
-#define LZ77_MK_EXPECTED_OUT 0x44524500
+#define LZ77_MK_EXPECTED_OUT (('E' << 16) | ('R' << 8) | ('D'))
 
 /* the look behind window
  * unknown, for long instruction match offsets up to
@@ -369,7 +369,7 @@ int lz77_mikrotik_wlan_decompress(
 					if (opcode->length == 0xc &&
 							((input_bit + opcode->length*8) > in_len)) {
 
-						if (!(*(unsigned int *)out == LZ77_MK_EXPECTED_OUT)) {
+						if (*(unsigned int *)out == LZ77_MK_EXPECTED_OUT) {
 							printf("lz77 decompressed from %d to %ld\n",
 									in_len, output_ptr - out);
 							return (output_ptr - out);
